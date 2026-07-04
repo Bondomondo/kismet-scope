@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kismet Relation Scope — Visual Guide</title>
+<style>
+  :root{
+    --bg0:#0A111E; --bg1:#0E1A2E;
+    --panel:rgba(14,25,44,.66); --line:rgba(120,150,200,.16); --line-strong:rgba(140,170,220,.34);
+    --ink:#E7EEF9; --muted:#8A9AB8; --faint:#5C6E90;
+    --ap:#F5A524; --client:#34D6CE; --bridged:#7C9CF5; --device:#9AA7C2;
+    --adhoc:#C77DFF; --ssid:#FF5C8A;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;font-family:var(--sans);color:var(--ink);line-height:1.6;
+    background:
+      radial-gradient(1200px 900px at 70% -10%, #14243f 0%, var(--bg1) 45%, var(--bg0) 100%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:48px 24px 96px}
+  header.hero{margin-bottom:14px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--faint)}
+  h1{font-family:var(--mono);font-size:26px;font-weight:600;letter-spacing:.06em;margin:6px 0 8px;text-transform:uppercase}
+  .lead{color:var(--muted);max-width:66ch;font-size:15px}
+  h2{font-family:var(--mono);font-size:16px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink);margin:44px 0 4px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  h2 .num{color:var(--faint);margin-right:10px}
+  h3{font-size:15px;margin:22px 0 2px;color:var(--ink)}
+  p{margin:8px 0;color:var(--muted);max-width:70ch}
+  p .ink,li .ink{color:var(--ink)}
+  a{color:var(--client);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code{font-family:var(--mono);font-size:.9em;background:rgba(120,150,200,.12);
+    padding:1px 6px;border-radius:5px;color:#CFE0FF}
+  .how{color:var(--faint);font-size:13.5px;font-style:italic}
+  .how::before{content:"How to read it — ";font-style:normal;color:var(--client);opacity:.85}
+
+  /* table of contents */
+  nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 8px}
+  nav.toc a{font-family:var(--mono);font-size:11.5px;color:var(--muted);
+    border:1px solid var(--line-strong);border-radius:999px;padding:5px 12px}
+  nav.toc a:hover{color:var(--ink);border-color:var(--client);text-decoration:none}
+
+  /* reference rows */
+  .rows{display:flex;flex-direction:column;gap:2px;margin-top:10px}
+  .row{display:grid;grid-template-columns:64px 1fr;gap:16px;align-items:start;
+    padding:12px 10px;border-radius:12px}
+  .row:nth-child(odd){background:rgba(120,150,200,.045)}
+  .row .swatch{display:flex;align-items:center;justify-content:center;min-height:40px}
+  .row .txt .name{color:var(--ink);font-weight:600;font-size:14px}
+  .row .txt .name .tag{font-family:var(--mono);font-size:10px;color:var(--faint);
+    border:1px solid var(--line-strong);border-radius:5px;padding:1px 6px;margin-left:8px;
+    text-transform:uppercase;letter-spacing:.08em;vertical-align:middle}
+  .row .txt p{margin:3px 0 0}
+
+  /* swatches */
+  .dot{width:16px;height:16px;border-radius:50%;display:inline-block}
+  .dot.d{border-radius:3px;transform:rotate(45deg)}
+  svg{overflow:visible;display:block}
+  .spin{transform-box:fill-box;transform-origin:center;animation:spin 6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .pulsering{transform-box:fill-box;transform-origin:center;animation:apulse 1.3s ease-in-out infinite}
+  @keyframes apulse{0%,100%{opacity:.35}50%{opacity:1}}
+  .ripple{transform-box:fill-box;transform-origin:center;animation:rip 1.5s ease-out infinite}
+  @keyframes rip{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.6);opacity:0}}
+  .flowline{stroke-dasharray:3 5;animation:flow 1s linear infinite}
+  @keyframes flow{to{stroke-dashoffset:-8}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+
+  .ramp{height:14px;border-radius:8px;margin:8px 0 4px;
+    background:linear-gradient(90deg,#2C5A8C 0%,#34D6CE 36%,#F5A524 73%,#FF5C6C 100%)}
+  .ramp-lbl{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--faint)}
+
+  .callout{border:1px solid var(--line-strong);border-radius:12px;padding:14px 16px;margin:14px 0;
+    background:var(--panel)}
+  .callout.warn{border-color:rgba(255,159,69,.45)}
+  .callout .h{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  ul{color:var(--muted);padding-left:20px;max-width:70ch}
+  li{margin:5px 0}
+  .foot{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:12px;color:var(--faint)}
+
+  /* the anatomy figure */
+  .figure{border:1px solid var(--line);border-radius:16px;background:var(--panel);
+    padding:8px;margin:16px 0;overflow-x:auto}
+  .figcap{font-family:var(--mono);font-size:11.5px;color:var(--faint);padding:4px 10px 8px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Kismet · Relation Scope</div>
+  <h1>Reading the Scope</h1>
+  <p class="lead">A field guide to every mark on the scope — what each colour, shape, ring,
+  line and motion means, and how to read them together. The scope is a
+  <span class="ink">relationship map</span> of the Wi-Fi around you: who talks to whom, how
+  strong the signal is, how busy each device is, and where the security risks are.</p>
+  <nav class="toc">
+    <a href="#anatomy">Anatomy</a>
+    <a href="#roles">Contact roles</a>
+    <a href="#size">Shape &amp; size</a>
+    <a href="#signal">Signal gauge</a>
+    <a href="#phantom">Phantoms</a>
+    <a href="#security">Security rings</a>
+    <a href="#alerts">Alerts</a>
+    <a href="#activity">Activity</a>
+    <a href="#fade">Fade</a>
+    <a href="#links">Links</a>
+    <a href="#dossier">Dossier</a>
+    <a href="#controls">Controls</a>
+    <a href="#caveats">Caveats</a>
+  </nav>
+</header>
+
+<!-- ============ ANATOMY ============ -->
+<h2 id="anatomy"><span class="num">01</span>Anatomy of a contact</h2>
+<p>Every device Kismet hears is a “contact” — a dot on the scope. A single contact can carry
+several marks at once. Here is one fully-loaded access-point contact with every layer switched on:</p>
+
+<div class="figure">
+<svg width="640" height="240" viewBox="0 0 640 240" role="img" aria-label="Annotated contact">
+  <!-- guide lines -->
+  <g stroke="var(--line-strong)" stroke-width="1" fill="none">
+    <path d="M300,120 L150,50"/><path d="M300,120 L150,120"/><path d="M300,120 L150,196"/>
+    <path d="M300,120 L470,54"/><path d="M300,120 L470,120"/><path d="M300,120 L470,190"/>
+  </g>
+  <!-- busy halo -->
+  <circle cx="300" cy="120" r="46" fill="#F5A524" opacity="0.14"/>
+  <!-- signal gauge (partial arc ~70%) -->
+  <circle cx="300" cy="120" r="34" fill="none" stroke="#F5A524" stroke-width="4"
+          stroke-linecap="round" stroke-dasharray="150 214" transform="rotate(-90 300 120)"/>
+  <!-- security warning ring -->
+  <circle class="spin" cx="300" cy="120" r="41" fill="none" stroke="#FF9F45"
+          stroke-width="2" stroke-dasharray="2 3"/>
+  <!-- core -->
+  <circle cx="300" cy="120" r="26" fill="#F5A524" stroke="rgba(6,12,22,.85)" stroke-width="1.5"/>
+  <text x="332" y="124" font-family="var(--mono)" font-size="12" fill="#E7EEF9">HomeNet</text>
+  <!-- labels -->
+  <g font-family="var(--mono)" font-size="11" fill="#8A9AB8">
+    <text x="10" y="46">core colour = role</text>
+    <text x="10" y="116">size = number of links</text>
+    <text x="10" y="200">glow = recent traffic</text>
+    <text x="486" y="50">signal gauge (dBm)</text>
+    <text x="486" y="116">warning ring = risk</text>
+    <text x="486" y="186">label = name / SSID</text>
+  </g>
+</svg>
+<div class="figcap">One access-point contact with role colour, signal gauge, security ring, busy-glow and label.</div>
+</div>
+<p class="how">start from the coloured core (what kind of device), then read the ring around it
+(signal), any extra rings (risk / alert), the halo (how busy), and the lines leaving it (who it talks to).</p>
+
+<!-- ============ ROLES ============ -->
+<h2 id="roles"><span class="num">02</span>Contact roles — the core colour</h2>
+<p>The solid centre of every contact is coloured by the kind of device Kismet thinks it is:</p>
+<div class="rows">
+  <div class="row"><div class="swatch"><span class="dot" style="background:var(--ap)"></span></div>
+    <div class="txt"><div class="name">Access point</div>
+      <p>A Wi-Fi base station broadcasting a network. Usually the hubs of the scope.</p></div></div>
+  <div class="row"><div class="swatch"><span class="dot" style="background:var(--client)"></span></div>
+    <div class="txt"><div class="name">Client</div>
+      <p>A device that has joined (or is looking for) a network — phones, laptops, IoT.</p></div></div>
+  <div class="row"><div class="swatch"><span class="dot" style="background:var(--bridged)"></span></div>
+    <div class="txt"><div class="name">Bridged / wired</div>
+      <p>A device seen <span class="ink">behind</span> an AP — typically reached over Ethernet and bridged onto the Wi-Fi.</p></div></div>
+  <div class="row"><div class="swatch"><span class="dot" style="background:var(--adhoc)"></span></div>
+    <div class="txt"><div class="name">Ad-hoc</div>
+      <p>A peer-to-peer / IBSS device not using a normal access point.</p></div></div>
+  <div class="row"><div class="swatch"><span class="dot" style="background:var(--device)"></span></div>
+    <div class="txt"><div class="name">Unknown role</div>
+      <p>A Wi-Fi device Kismet couldn’t yet classify as AP or client.</p></div></div>
+  <div class="row"><div class="swatch"><span class="dot d" style="background:var(--ssid)"></span></div>
+    <div class="txt"><div class="name">SSID network <span class="tag">diamond</span></div>
+      <p>Not a device — the <span class="ink">named network</span> itself. APs advertise them; clients probe for them.</p></div></div>
+</div>
+<p class="how">colour answers “what is this?”. Amber hubs are access points; teal leaves are clients;
+pink diamonds are the network names tying them together.</p>
+
+<!-- ============ SHAPE & SIZE ============ -->
+<h2 id="size"><span class="num">03</span>Shape &amp; size</h2>
+<h3>Shape</h3>
+<p>Devices are <span class="ink">circles</span>. Network names (SSIDs) are <span class="ink">diamonds</span>,
+so you can pick the “networks” layer apart from the “devices” at a glance.</p>
+<h3>Size</h3>
+<p>A contact’s diameter grows with its <span class="ink">number of links</span> (its degree) — on a
+square-root scale, so a hub with 40 clients is bigger than a lonely device, but not 40× bigger.</p>
+<div class="figure">
+<svg width="360" height="70" viewBox="0 0 360 70" role="img" aria-label="Node sizes by links">
+  <g fill="var(--client)" stroke="rgba(6,12,22,.85)" stroke-width="1.2">
+    <circle cx="40" cy="35" r="6"/><circle cx="130" cy="35" r="10"/>
+    <circle cx="230" cy="35" r="15"/><circle cx="330" cy="35" r="20"/>
+  </g>
+  <g font-family="var(--mono)" font-size="10" fill="#5C6E90" text-anchor="middle">
+    <text x="40" y="64">few links</text><text x="130" y="64">·</text>
+    <text x="230" y="64">·</text><text x="330" y="64">many links</text>
+  </g>
+</svg>
+</div>
+<p class="how">bigger dot = more connected. The biggest dots are the busy hubs worth investigating first.</p>
+
+<!-- ============ SIGNAL GAUGE ============ -->
+<h2 id="signal"><span class="num">04</span>Signal gauge — the arc around a contact</h2>
+<p>A thin arc hugs each contact that Kismet has a signal reading for. Its <span class="ink">length</span>
+(how far around the circle it sweeps) and its <span class="ink">colour</span> both encode the received
+signal strength in dBm — closer / stronger fills more of the ring and shifts warmer.</p>
+<div class="figure">
+<svg width="440" height="90" viewBox="0 0 440 90" role="img" aria-label="Signal gauge examples">
+  <g fill="none" stroke-width="4" stroke-linecap="round">
+    <circle cx="60"  cy="40" r="20" stroke="#2C5A8C" stroke-dasharray="25 200" transform="rotate(-90 60 40)"/>
+    <circle cx="170" cy="40" r="20" stroke="#34D6CE" stroke-dasharray="63 200" transform="rotate(-90 170 40)"/>
+    <circle cx="280" cy="40" r="20" stroke="#F5A524" stroke-dasharray="100 200" transform="rotate(-90 280 40)"/>
+    <circle cx="390" cy="40" r="20" stroke="#FF5C6C" stroke-dasharray="122 200" transform="rotate(-90 390 40)"/>
+  </g>
+  <g fill="var(--client)" stroke="rgba(6,12,22,.85)" stroke-width="1.2">
+    <circle cx="60" cy="40" r="12"/><circle cx="170" cy="40" r="12"/>
+    <circle cx="280" cy="40" r="12"/><circle cx="390" cy="40" r="12"/>
+  </g>
+  <g font-family="var(--mono)" font-size="10" fill="#5C6E90" text-anchor="middle">
+    <text x="60" y="82">-90 dBm</text><text x="170" y="82">-75 dBm</text>
+    <text x="280" y="82">-55 dBm</text><text x="390" y="82">-42 dBm</text>
+  </g>
+</svg>
+</div>
+<div class="ramp"></div>
+<div class="ramp-lbl"><span>-95 dBm · far / weak</span><span>-40 dBm · near / strong</span></div>
+<p class="how">a nearly-full, warm/red arc = a strong, nearby signal. A short, blue sliver = a
+faint, distant device. It’s a proximity gauge, not a data-rate.</p>
+
+<!-- ============ PHANTOM ============ -->
+<h2 id="phantom"><span class="num">05</span>Phantom contacts — hollow dashed circles</h2>
+<div class="rows"><div class="row">
+  <div class="swatch"><svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="11" fill="none" stroke="var(--client)" stroke-width="2" stroke-dasharray="2 3" opacity=".75"/></svg></div>
+  <div class="txt"><div class="name">Referenced, not captured</div>
+    <p>An AP tells us it has a client with a certain MAC, but Kismet never heard that client
+    directly. It’s drawn as a <span class="ink">hollow, dashed</span> outline instead of a solid dot.</p></div>
+</div></div>
+<p class="how">a dashed empty circle is a device we know <em>exists</em> (an AP vouches for it) but haven’t
+actually seen on the air. If it later transmits, it fills in as a normal solid contact in place.</p>
+
+<!-- ============ SECURITY ============ -->
+<h2 id="security"><span class="num">06</span>Security rings — a dashed, spinning ring</h2>
+<p>A slowly-rotating dashed ring appears <span class="ink">only</span> on networks with an encryption
+weakness. Well-configured networks (WPA2 / WPA3, no WPS) get no ring at all — so any ring you see is
+worth a look. The colour tells you the problem:</p>
+<div class="rows">
+  <div class="row"><div class="swatch"><svg width="40" height="40" viewBox="0 0 40 40"><circle class="spin" cx="20" cy="20" r="15" fill="none" stroke="#FF5C6C" stroke-width="2" stroke-dasharray="2 3"/><circle cx="20" cy="20" r="8" fill="#F5A524"/></svg></div>
+    <div class="txt"><div class="name">Open <span class="tag" style="border-color:#FF5C6C;color:#FF8A96">red</span></div>
+      <p>No encryption at all — anyone can join and all traffic is in the clear.</p></div></div>
+  <div class="row"><div class="swatch"><svg width="40" height="40" viewBox="0 0 40 40"><circle class="spin" cx="20" cy="20" r="15" fill="none" stroke="#FF9F45" stroke-width="2" stroke-dasharray="2 3"/><circle cx="20" cy="20" r="8" fill="#F5A524"/></svg></div>
+    <div class="txt"><div class="name">WEP <span class="tag" style="border-color:#FF9F45;color:#FFB877">orange</span></div>
+      <p>The old, cryptographically broken standard — trivially crackable.</p></div></div>
+  <div class="row"><div class="swatch"><svg width="40" height="40" viewBox="0 0 40 40"><circle class="spin" cx="20" cy="20" r="15" fill="none" stroke="#FF9F45" stroke-width="2" stroke-dasharray="2 3"/><circle cx="20" cy="20" r="8" fill="#F5A524"/></svg></div>
+    <div class="txt"><div class="name">WPS enabled <span class="tag" style="border-color:#FF9F45;color:#FFB877">amber</span></div>
+      <p>Even on an otherwise-fine WPA2 network — WPS’s PIN is a known brute-force attack vector.</p></div></div>
+</div>
+<div class="callout"><div class="h">Note</div>
+<p style="margin-top:6px">The <span class="ink">rotation is purely decorative</span> — it exists only to catch your eye. The
+meaning is the ring’s presence and colour, not its motion. Adjust or stop the spin with the
+<span class="ink">Ring spin</span> slider, or hide the layer entirely from the legend.</p></div>
+<p class="how">see a spinning ring → that network is weak. Red = wide open, orange = WEP, amber = WPS on.
+Hover or click it for the exact crypto string.</p>
+
+<!-- ============ ALERTS ============ -->
+<h2 id="alerts"><span class="num">07</span>Alerts — a solid red pulsing ring</h2>
+<div class="rows"><div class="row">
+  <div class="swatch"><svg width="40" height="40" viewBox="0 0 40 40"><circle class="pulsering" cx="20" cy="20" r="15" fill="none" stroke="#FF3B57" stroke-width="2.4"/><circle cx="20" cy="20" r="8" fill="#34D6CE"/></svg></div>
+  <div class="txt"><div class="name">Flagged by Kismet’s IDS</div>
+    <p>The device is named in one or more Kismet alerts — deauthentication floods, AP spoofing,
+    and other anomalies. A red <span class="ink">Alerts</span> panel at the top-centre lists the recent ones;
+    click a row to jump to the device, and open its dossier for the full alert text.</p></div>
+</div></div>
+<p class="how">a solid red, pulsing ring (distinct from the dashed spinning security ring) means
+“Kismet raised an alarm about this device.” Check the Alerts panel for what and when.</p>
+
+<!-- ============ ACTIVITY ============ -->
+<h2 id="activity"><span class="num">08</span>Activity — glow, flow &amp; ping</h2>
+<p>Three marks show live traffic, all driven by each device’s recent packet rate:</p>
+<div class="rows">
+  <div class="row"><div class="swatch"><svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="#34D6CE" opacity=".22"/><circle cx="22" cy="22" r="9" fill="#34D6CE"/></svg></div>
+    <div class="txt"><div class="name">Busy glow</div>
+      <p>A soft halo behind a contact that <span class="ink">grows and brightens</span> with how much traffic
+      it’s moving. Chatty devices glow; idle beacon-only devices stay flat.</p></div></div>
+  <div class="row"><div class="swatch"><svg width="44" height="24" viewBox="0 0 44 24"><line class="flowline" x1="2" y1="12" x2="42" y2="12" stroke="rgba(120,214,206,.9)" stroke-width="2"/></svg></div>
+    <div class="txt"><div class="name">Traffic flow</div>
+      <p>Dashes <span class="ink">stream along the links</span> of notably-busy devices — a sense of where
+      data is actually moving right now.</p></div></div>
+  <div class="row"><div class="swatch"><svg width="44" height="44" viewBox="0 0 44 44"><circle class="ripple" cx="22" cy="22" r="13" fill="none" stroke="#EAF2FF" stroke-width="2"/><circle cx="22" cy="22" r="9" fill="#34D6CE"/></svg></div>
+    <div class="txt"><div class="name">Live ping <span class="tag">live only</span></div>
+      <p>A quick ripple blooms from a contact the <span class="ink">moment new packets arrive</span> for it
+      (while running <code>--live</code>). Several per update on a busy network is normal.</p></div></div>
+</div>
+<p class="how">glow = how busy overall; flowing links = where traffic is going; a ripple = something
+just happened here, this second. Hover a device for its exact rate (<code>~N pkt/min</code>).</p>
+
+<!-- ============ FADE ============ -->
+<h2 id="fade"><span class="num">09</span>Activity fade — brightness by recency</h2>
+<p>Contacts <span class="ink">dim toward the background</span> the longer they’ve been silent, so the
+brightest dots are the ones active right now. Live, this tracks real time; on a saved capture it
+shades the oldest contacts down and the most-recent ones up across the capture’s span.</p>
+<div class="figure">
+<svg width="360" height="60" viewBox="0 0 360 60" role="img" aria-label="Fade by recency">
+  <g fill="var(--client)" stroke="rgba(6,12,22,.85)" stroke-width="1">
+    <circle cx="40" cy="30" r="12" opacity="1"/><circle cx="140" cy="30" r="12" opacity=".7"/>
+    <circle cx="240" cy="30" r="12" opacity=".45"/><circle cx="330" cy="30" r="12" opacity=".3"/>
+  </g>
+  <g font-family="var(--mono)" font-size="10" fill="#5C6E90" text-anchor="middle">
+    <text x="40" y="56">just now</text><text x="330" y="56">long quiet</text>
+  </g>
+</svg>
+</div>
+<p class="how">bright = seen recently, faint = gone quiet. In live mode you can watch devices fade out
+and light back up as they come and go.</p>
+
+<!-- ============ LINKS ============ -->
+<h2 id="links"><span class="num">10</span>Links — the lines between contacts</h2>
+<p>Lines show relationships. Their style tells you the kind of relationship:</p>
+<div class="rows">
+  <div class="row"><div class="swatch"><svg width="48" height="16" viewBox="0 0 48 16"><line x1="2" y1="8" x2="46" y2="8" stroke="rgba(140,170,220,.55)" stroke-width="1.4"/></svg></div>
+    <div class="txt"><div class="name">Association</div><p>A client is joined to an access point. The backbone of the graph.</p></div></div>
+  <div class="row"><div class="swatch"><svg width="48" height="16" viewBox="0 0 48 16"><line x1="2" y1="8" x2="46" y2="8" stroke="rgba(245,165,36,.7)" stroke-width="1.4"/></svg></div>
+    <div class="txt"><div class="name">SSID advertise</div><p>An access point broadcasting a named network (AP → SSID diamond).</p></div></div>
+  <div class="row"><div class="swatch"><svg width="48" height="16" viewBox="0 0 48 16"><line x1="2" y1="8" x2="46" y2="8" stroke="rgba(255,92,138,.8)" stroke-width="1.4" stroke-dasharray="3 4"/></svg></div>
+    <div class="txt"><div class="name">Probe request</div><p>A client actively looking for a named network it remembers (client → SSID).</p></div></div>
+  <div class="row"><div class="swatch"><svg width="48" height="16" viewBox="0 0 48 16"><line x1="2" y1="8" x2="46" y2="8" stroke="#F5A524" stroke-width="2.6" opacity=".6"/></svg></div>
+    <div class="txt"><div class="name">Same-AP radio</div><p>A short glowing amber link tying together several BSSIDs that belong to one physical radio (e.g. a multi-SSID router).</p></div></div>
+  <div class="row"><div class="swatch"><svg width="48" height="16" viewBox="0 0 48 16"><line class="flowline" x1="2" y1="8" x2="46" y2="8" stroke="rgba(120,214,206,.85)" stroke-width="2"/></svg></div>
+    <div class="txt"><div class="name">Traffic flow</div><p>Animated dashes over an association link whose device(s) are busy right now (see Activity).</p></div></div>
+</div>
+<p class="how">solid teal-grey = “is connected to”; amber = “advertises”; dashed pink = “is asking for”;
+flowing dashes = “is busy”.</p>
+
+<!-- ============ DOSSIER ============ -->
+<h2 id="dossier"><span class="num">11</span>The dossier — click any contact</h2>
+<p>Clicking a contact dims the rest of the scope, highlights its immediate neighbours, and opens a
+<span class="ink">dossier</span> panel with everything Kismet knows about it:</p>
+<ul>
+  <li><span class="ink">Security</span> — the encryption string and whether WPS is on (flagged red if risky).</li>
+  <li><span class="ink">Radio</span> — vendor, channel, band (2.4 / 5 / 6 GHz), channel width, TX power.</li>
+  <li><span class="ink">Signal</span> — current dBm and the min–max range seen.</li>
+  <li><span class="ink">Traffic</span> — total packets and data volume; associated-client and probed-SSID counts.</li>
+  <li><span class="ink">Signal graph</span> &amp; <span class="ink">Packet graph</span> — sparklines of the last minute of
+  signal strength and packet rate, so you can see trends at a glance.</li>
+  <li><span class="ink">Alerts</span> — full text of any IDS alerts naming this device.</li>
+  <li><span class="ink">Connected contacts</span> — a clickable list of neighbours; that’s how you hop from
+  device to device through the graph.</li>
+</ul>
+<p class="how">the scope is the overview; the dossier is the detail. Click to drill in, click a
+neighbour in the list to walk the network, press <code>Esc</code> or the ✕ to step back out.</p>
+
+<!-- ============ CONTROLS ============ -->
+<h2 id="controls"><span class="num">12</span>Controls &amp; interaction</h2>
+<h3>The legend (bottom-left) is also the control panel</h3>
+<p>Every visual in this guide has a row in the legend. Click a row to toggle that layer on or off —
+contact types (which filters those devices out), link kinds, the signal gauge, security &amp; alert
+rings, activity fade, busy glow, live ping, the dossier graphs, and the radar backdrop.</p>
+<h3>Top-right panel</h3>
+<ul>
+  <li><span class="ink">Search</span> — by MAC, name, SSID, vendor, or encryption (e.g. <code>open</code>, <code>wpa3</code>); Enter jumps to the first match.</li>
+  <li><span class="ink">Spread</span> / <span class="ink">Link length</span> — retune how the layout spaces things out.</li>
+  <li><span class="ink">Ring spin</span> — how fast the security rings rotate; slide fully left for <em>off</em>.</li>
+  <li><span class="ink">Freeze</span> — pin every contact in place (stops the layout drifting); <span class="ink">Reset view</span> re-fits everything.</li>
+</ul>
+<h3>Mouse</h3>
+<p><span class="ink">Hover</span> for a quick readout · <span class="ink">click</span> to open the dossier ·
+<span class="ink">scroll</span> to zoom · <span class="ink">drag</span> the background to pan ·
+<span class="ink">drag a contact</span> to reposition it.</p>
+
+<!-- ============ CAVEATS ============ -->
+<h2 id="caveats"><span class="num">13</span>Important caveats</h2>
+<div class="callout warn"><div class="h">Read these before drawing conclusions</div>
+<ul style="margin-top:8px">
+  <li><span class="ink">This is a relationship map, not a geographic one.</span> Positions come from a
+  force-directed layout — proximity on screen means “related”, not “physically near”. (Geography
+  needs a GPS source at capture time.)</li>
+  <li><span class="ink">Only associated clients appear under an AP.</span> A client shows up once it has
+  actually joined a network. Idle devices sending randomised probes won’t appear as clients — but if
+  they probe for named networks, they link to those SSID diamonds.</li>
+  <li><span class="ink">One physical AP can appear as several contacts</span> — each SSID gets its own
+  BSSID. The glowing amber “same-AP radio” links tie them back together.</li>
+  <li><span class="ink">Motion is not data.</span> The gentle drifting of contacts is the layout
+  settling; the ring spin and glow pulse are decorative. Only the marks themselves (colour, size,
+  ring presence, arc length, halo, flow, ping) carry meaning.</li>
+</ul>
+</div>
+
+<div class="foot">
+  Kismet Relation Scope · visual guide. Generated visuals mirror the live scope’s encodings.
+  Toggle any layer from the legend to isolate what you’re looking at.
+</div>
+
+</div>
+</body>
+</html>

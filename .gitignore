@@ -1,0 +1,14 @@
+# Kismet capture logs — real captured network data (and typically >100 MB)
+*.kismet
+*.kismetdb
+
+# Generated visualisations — may embed real captured device MACs / SSIDs
+scope.html
+kismet_graph.html
+
+# Python
+__pycache__/
+*.pyc
+
+# Local editor / tooling config
+.claude/
