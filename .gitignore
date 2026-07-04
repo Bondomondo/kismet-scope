@@ -1,6 +1,8 @@
 # Kismet capture logs — real captured network data (and typically >100 MB)
 *.kismet
 *.kismetdb
+# ...but do ship the synthetic demo capture
+!demo.kismet
 
 # Generated visualisations — may embed real captured device MACs / SSIDs
 scope.html

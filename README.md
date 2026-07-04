@@ -11,6 +11,16 @@ gone quiet **fade** so recent activity stands out.
 
 One file, standard library only. No install.
 
+## Try it
+
+A small **synthetic** demo capture ships with the repo — no real network data:
+
+    python3 kismet_graph.py --db demo.kismet -o demo.html
+
+Then open `demo.html`. It's built to show off every visual (all device roles, each
+encryption tier, a multi-SSID radio, a phantom client, probes, live activity and a
+couple of IDS alerts). Regenerate or tweak it with `python3 make_demo.py`.
+
 ## Use
 
     # From a capture log (.kismetdb):
