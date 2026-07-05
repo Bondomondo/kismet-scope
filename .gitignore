@@ -8,6 +8,9 @@
 scope.html
 kismet_graph.html
 
+# Rendered demo videos — hosted as GitHub Release assets, not in the repo
+*.mp4
+
 # Python
 __pycache__/
 *.pyc

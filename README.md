@@ -11,6 +11,17 @@ gone quiet **fade** so recent activity stands out.
 
 <img width="1735" height="1124" alt="Screenshot from 2026-07-04 23-04-26" src="https://github.com/user-attachments/assets/210dc291-a345-4079-bfd3-26ff6a862868" />
 
+## Demos
+
+- **[▶ Guided tour (≈2.5 min)](https://github.com/Bondomondo/kismet-scope/releases/latest/download/kismet-scope-guide.mp4)** —
+  a narrated walkthrough of every feature: roles, filters, the signal gauge,
+  security rings, activity, alerts, the dossier, search, layer toggles and the
+  sliders.
+- **[▶ Quick demo (≈30 s)](https://github.com/Bondomondo/kismet-scope/releases/latest/download/kismet-scope-demo.mp4)** —
+  a live scan discovering devices, showing off the headline visuals.
+
+Both are rendered from the bundled `demo.kismet` — build the players with
+`make_demo_video.py` / `make_tour_video.py` and record with `record_demo.py`.
 
 ## Try it
 
