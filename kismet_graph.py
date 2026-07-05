@@ -928,6 +928,10 @@ TEMPLATE = r"""<!DOCTYPE html>
     <label>Rotation <span id="spinV"></span></label>
     <input type="range" id="spin" min="0" max="100" value="0">
   </div>
+  <div class="slider">
+    <label>Last seen <span id="lastseenV"></span></label>
+    <input type="range" id="lastseen" min="0" max="100" value="100">
+  </div>
 </div>
 
 <div id="legend" class="panel"></div>
@@ -1109,6 +1113,7 @@ const FADE_LIVE = 300;     // live: seconds of silence to reach full fade
 const FADE_MIN = 0.3;      // opacity floor for long-quiet contacts
 let refTime = 0;           // "now" reference for age (advances in live mode)
 let graphMaxLast = 0;      // newest last-seen in the current graph
+let graphMinLast = 0;      // oldest device last-seen (drives last-seen span)
 let fadeWindow = FADE_LIVE;// seconds; adaptive to capture span in static mode
 let pollServerTime = 0, pollWall = 0;   // server clock anchor for live fade
 // best estimate of the server's current unix time; 0 (=> no advance) unless live
@@ -1217,11 +1222,14 @@ function apply(newGraph){
   flowThresh = Math.max(4, actMax*0.08);
   const lasts = GRAPH.nodes.map(n=>n.last).filter(x=>x>0);
   graphMaxLast = d3.max(lasts) || 0;
-  const minLast = d3.min(lasts) || graphMaxLast;
+  graphMinLast = d3.min(lasts) || graphMaxLast;
   // live: fixed recency window. static: spread fade across the capture's own
   // timespan so a snapshot shades oldest->newest instead of washing out.
-  fadeWindow = estimatedNow()>0 ? FADE_LIVE : Math.max(120, graphMaxLast-minLast);
+  fadeWindow = estimatedNow()>0 ? FADE_LIVE : Math.max(120, graphMaxLast-graphMinLast);
   refTime = Math.max(graphMaxLast, estimatedNow());
+  // full age span drives the Last-seen filter slider
+  ageSpan = Math.max(1, (estimatedNow()>0 ? refTime : graphMaxLast) - graphMinLast);
+  if(typeof updateLastSeenLabel==='function') updateLastSeenLabel();
 
   adj.clear();
   GRAPH.nodes.forEach(n=>adj.set(n.id,[]));
@@ -1582,14 +1590,28 @@ function renderLegend(){
   all.select('.label').text(r=>ROLE[r].name);
   all.select('.n').text(r=>counts[r]);
 }
+// ---- "last seen" recency filter (Last-seen slider) ----
+let ageSpan = 1;   // seconds between newest and oldest device last-seen
+function lastSeenMaxAge(){
+  const v = +document.getElementById('lastseen').value;   // 0..100
+  return v >= 100 ? Infinity : (v / 100) * ageSpan;       // 100 = show all
+}
+function recencyHidden(d){
+  // SSID networks and referenced-only (phantom) contacts have no capture time,
+  // so the recency filter leaves them alone.
+  if(!d.last) return false;
+  const m = lastSeenMaxAge();
+  return isFinite(m) && (refTime - d.last) > m;
+}
+function nodeFilteredOut(d){ return hidden.has(d.role) || recencyHidden(d); }
 function applyFilter(){
-  // role filter: hide a contact type and its links. Composes with the per-layer
-  // link-type toggles (those hide via a `no-KEY` body class in CSS), because we
-  // only ever set an inline display of 'none' (role hidden) or null (defer to CSS).
-  node.style('display',d=>hidden.has(d.role)?'none':null);
+  // role filter + recency filter: hide a contact and its links. Composes with the
+  // per-layer link-type toggles (those hide via a `no-KEY` body class in CSS),
+  // because we only ever set an inline display of 'none' (hidden) or null (CSS).
+  node.style('display',d=>nodeFilteredOut(d)?'none':null);
   link.style('display',d=>{
     const s=d.source, t=d.target;
-    return (hidden.has(s.role)||hidden.has(t.role))?'none':null;
+    return (nodeFilteredOut(s)||nodeFilteredOut(t))?'none':null;
   });
 }
 
@@ -1662,6 +1684,19 @@ syncLabels(); applySpin();
 chargeEl.oninput=()=>{sim.force('charge').strength(-chargeEl.value);sim.alpha(.5).restart();syncLabels();};
 distEl.oninput=()=>{baseDist=+distEl.value;sim.force('link').distance(linkDist);sim.alpha(.5).restart();syncLabels();};
 spinEl.oninput=applySpin;
+// Last-seen recency filter
+const lastSeenV=document.getElementById('lastseenV');
+function fmtDur(s){ s=Math.round(s);
+  if(s<90) return s+'s';
+  if(s<5400) return Math.round(s/60)+'m';
+  if(s<86400) return (s/3600).toFixed(s<36000?1:0)+'h';
+  return (s/86400).toFixed(1)+'d'; }
+function updateLastSeenLabel(){
+  const v=+document.getElementById('lastseen').value;
+  lastSeenV.textContent = v>=100 ? 'all' : '≤'+fmtDur(lastSeenMaxAge());
+}
+updateLastSeenLabel();
+document.getElementById('lastseen').oninput=()=>{ updateLastSeenLabel(); applyFilter(); };
 document.getElementById('fit').onclick=fit;
 let frozen=false;
 document.getElementById('freeze').onclick=function(){
@@ -1720,9 +1755,11 @@ if(LIVE){
   setInterval(poll, POLL_MS);
   setInterval(()=>{
     renderLiveStatus();
-    // advance the fade between polls so quiet contacts keep dimming
+    // advance the fade (and last-seen filter) between polls as contacts age
     refTime = Math.max(graphMaxLast, estimatedNow());
+    ageSpan = Math.max(1, refTime - graphMinLast);
     applyFade();
+    if(+document.getElementById('lastseen').value < 100){ updateLastSeenLabel(); applyFilter(); }
   }, 1000);
 }
 renderLiveStatus();
