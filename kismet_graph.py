@@ -915,8 +915,8 @@ TEMPLATE = r"""<!DOCTYPE html>
     <input type="range" id="dist" min="20" max="220" value="74">
   </div>
   <div class="slider">
-    <label>Ring spin <span id="spinV"></span></label>
-    <input type="range" id="spin" min="0" max="100" value="73">
+    <label>Rotation <span id="spinV"></span></label>
+    <input type="range" id="spin" min="0" max="100" value="0">
   </div>
 </div>
 
@@ -1030,10 +1030,6 @@ const drag = d3.drag()
 let link = gLink.selectAll('line');
 let node = gNode.selectAll('g.node');
 
-// security-ring spin, driven via the Web Animations API (see drawNode / applySpin)
-const baseSpinMs = 9000;   // one revolution at playbackRate 1
-let spinRate = 1;          // 0 = stopped; set from the Ring-spin slider
-
 function drawNode(g,d){
   g.selectAll('*').remove();
   // busy halo (behind everything): size + opacity scale with recent packet rate
@@ -1050,16 +1046,14 @@ function drawNode(g,d){
       .attr('stroke',sigColor(d.sig)).attr('stroke-width',2.4)
       .attr('stroke-dasharray',c).attr('stroke-dashoffset',c*(1-sigFrac(d.sig)));
   }
-  // security warning ring: open / WEP networks, or WPS enabled.
-  // Spin it with the Web Animations API so the Ring-spin slider can retune it
-  // live (via playbackRate). baseSpinMs = one revolution at rate 1 (≈9s).
+  // security warning ring: open / WEP networks, or WPS enabled. Spun in place
+  // via the Web Animations API (transform-box:fill-box keeps it centred).
   if(nodeRisk(d)){
     const wc=g.append('circle').attr('class','warn').attr('r',d.r+ (d.role==='ssid'?4:6.5))
       .attr('stroke',riskColor(d));
-    const sp=wc.node().animate(
+    wc.node().animate(
       [{transform:'rotate(0deg)'},{transform:'rotate(360deg)'}],
-      {duration:baseSpinMs, iterations:Infinity, easing:'linear'});
-    if(spinRate>0){ sp.playbackRate=spinRate; } else { sp.pause(); }
+      {duration:9000, iterations:Infinity, easing:'linear'});
   }
   // alert ring: device named in one or more Kismet IDS alerts
   if(d.alerts>0){
@@ -1266,11 +1260,32 @@ function apply(newGraph){
 
 svg.on('click',()=>select(null));
 
-sim.on('tick',()=>{
+function renderPositions(){
   link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y)
       .attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
   node.attr('transform',d=>`translate(${d.x},${d.y})`);
-});
+}
+sim.on('tick', renderPositions);
+
+// ---- scope rotation: sweep every contact around the centre, radar-style ----
+// Rotates the node POSITIONS (not a group transform) so hover / click / pan /
+// drag all keep working. Runs on its own rAF so it continues after the layout
+// has settled; the centre matches the backdrop rings' centre (W/2,H/2).
+let rotSpeed = 0;              // degrees per second (0 = off)
+let rotLast = 0, rotRAF = null;
+function rotTick(now){
+  if(rotSpeed===0){ rotRAF=null; return; }
+  const dt=Math.min(0.05,(now-(rotLast||now))/1000); rotLast=now;
+  const a=rotSpeed*dt*Math.PI/180, cs=Math.cos(a), sn=Math.sin(a), cx=W/2, cy=H/2;
+  GRAPH.nodes.forEach(n=>{
+    let dx=n.x-cx, dy=n.y-cy;
+    n.x=cx+dx*cs-dy*sn; n.y=cy+dx*sn+dy*cs;
+    if(n.fx!=null){ dx=n.fx-cx; dy=n.fy-cy; n.fx=cx+dx*cs-dy*sn; n.fy=cy+dx*sn+dy*cs; }
+  });
+  renderPositions();
+  rotRAF=requestAnimationFrame(rotTick);
+}
+function startRot(){ if(rotSpeed!==0 && !rotRAF){ rotLast=0; rotRAF=requestAnimationFrame(rotTick); } }
 
 // ---- zoom ----
 const zoom = d3.zoom().scaleExtent([.15,6]).on('zoom',e=>{
@@ -1602,21 +1617,13 @@ const chargeEl=document.getElementById('charge'), distEl=document.getElementById
 const chargeV=document.getElementById('chargeV'), distV=document.getElementById('distV');
 const spinEl=document.getElementById('spin'), spinV=document.getElementById('spinV');
 function applySpin(){
-  const v=+spinEl.value;
-  if(v<=0){ spinRate=0; spinV.textContent='off'; }
+  const v=+spinEl.value;                  // 0 = off, else degrees/second
+  if(v<=0){ rotSpeed=0; spinV.textContent='off'; }
   else{
-    const dur=31-v*0.30;                 // v:1..100 -> ~30.7s (slow) .. 1s (fast)
-    spinRate=(baseSpinMs/1000)/dur;      // playbackRate = 9s / desired seconds
-    spinV.textContent=dur.toFixed(1)+'s/rev';
+    rotSpeed=v*0.30;                      // v:1..100 -> 0.3 .. 30 deg/s
+    spinV.textContent=Math.round(360/rotSpeed)+'s/turn';
+    startRot();
   }
-  // retune every live ring's spin (playbackRate reaches the compositor; a CSS
-  // animation-duration change would not)
-  node.selectAll('.warn').each(function(){
-    this.getAnimations().forEach(a=>{
-      if(spinRate<=0){ a.pause(); }
-      else { a.playbackRate=spinRate; a.play(); }
-    });
-  });
 }
 function syncLabels(){chargeV.textContent=chargeEl.value;distV.textContent=distEl.value;}
 syncLabels(); applySpin();

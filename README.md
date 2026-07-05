@@ -107,10 +107,10 @@ was written. With `--bind 0.0.0.0` the script also prints a
   SSID advertise, probe, same-AP radio, traffic flow), signal & status (signal
   gauge, activity fade, security ring, alert ring), activity (busy glow, live ping,
   and the dossier's signal / packet graphs), and the radar backdrop.
-- **Spread / Link length** sliders retune the layout; **Ring spin** sets how fast
-  the security warning rings rotate (slide to the far left for *off*); **Freeze**
-  pins the layout; **Reset view** refits. Scroll to zoom, drag to pan, drag a node
-  to reposition.
+- **Spread / Link length** sliders retune the layout; **Rotation** slowly sweeps
+  the whole scope around the centre, radar-style (slide to the far left for *off*,
+  the default); **Freeze** pins the layout; **Reset view** refits. Scroll to zoom,
+  drag to pan, drag a node to reposition.
 
 ## Notes
 
