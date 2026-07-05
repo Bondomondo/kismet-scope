@@ -9,7 +9,8 @@ WPS enabled), a solid red **alert ring** marks devices flagged by Kismet's IDS,
 busy devices **glow and flow** with their packet rate, and contacts that have
 gone quiet **fade** so recent activity stands out.
 
-One file, standard library only. No install.
+<img width="1735" height="1124" alt="Screenshot from 2026-07-04 23-04-26" src="https://github.com/user-attachments/assets/210dc291-a345-4079-bfd3-26ff6a862868" />
+
 
 ## Try it
 
