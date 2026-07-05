@@ -757,6 +757,13 @@ TEMPLATE = r"""<!DOCTYPE html>
     max-height:calc(100vh - 36px);overflow-y:auto;overflow-x:hidden}
   #legend .eyebrow{margin-bottom:5px}
   #legend .leg-h{margin-top:9px}
+  .leg-top{display:flex;align-items:center;justify-content:space-between;gap:16px;
+    cursor:pointer;user-select:none}
+  .leg-top .eyebrow{margin-bottom:0}
+  .leg-caret{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--faint);
+    white-space:nowrap;transition:.12s}
+  .leg-top:hover .leg-caret{color:var(--ink)}
+  #legend-layers{display:flex;flex-direction:column;gap:1px}
   .chip{display:flex;align-items:center;gap:9px;padding:4px 7px;border-radius:7px;
     cursor:pointer;font-size:12px;color:var(--muted);user-select:none;transition:.12s}
   .chip:hover{background:rgba(120,150,200,.08);color:var(--ink)}
@@ -803,7 +810,10 @@ TEMPLATE = r"""<!DOCTYPE html>
   .arow .ad{font-family:var(--mono);font-size:11px;color:var(--muted);flex:1;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .arow .at{font-family:var(--mono);font-size:9.5px;color:var(--faint);white-space:nowrap}
-  #alerts .amore{font-family:var(--mono);font-size:10px;color:var(--faint);padding:5px 6px 0}
+  #alerts-list.expanded{max-height:min(52vh,420px);overflow-y:auto}
+  #alerts .amore{font-family:var(--mono);font-size:10px;color:var(--muted);padding:6px 6px 2px;
+    cursor:pointer;letter-spacing:.06em}
+  #alerts .amore:hover{color:var(--ink)}
   body.has-selection #alerts{transform:translateX(calc(-50% - 176px));transition:transform .28s}
 
   /* ---- dossier alerts section ---- */
@@ -1527,19 +1537,31 @@ const LAYER_SECTIONS=[
     {k:'backdrop', label:'Radar backdrop', sw:'<svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="var(--faint)" stroke-width="1"/><circle cx="7" cy="7" r="3" fill="none" stroke="var(--faint)" stroke-width="1"/></svg>'},
   ]},
 ];
+let legendOpen=false;   // collapsed by default: contacts only
 function buildLegendChrome(){
-  let html='<div class="eyebrow">Contacts — click to filter</div><div id="leg-contacts"></div>';
+  let html='<div class="leg-top" id="legend-toggle" title="Show/hide the visual layers">'
+    +'<span class="eyebrow">Contacts</span>'
+    +'<span class="leg-caret" id="legend-caret"></span></div>'
+    +'<div id="leg-contacts"></div>'
+    +'<div id="legend-layers">';
   for(const sec of LAYER_SECTIONS){
     html+=`<div class="eyebrow leg-h">${sec.title}</div>`;
     for(const it of sec.items)
       html+=`<div class="chip lay" data-layer="${it.k}"><span class="sw">${it.sw}</span><span class="lbl2">${it.label}</span></div>`;
   }
+  html+='</div>';
   document.getElementById('legend').innerHTML=html;
   document.querySelectorAll('#legend .chip.lay').forEach(c=>{
     const k=c.getAttribute('data-layer');
     c.classList.toggle('off',!layers[k]);
     c.onclick=()=>{ layers[k]=!layers[k]; c.classList.toggle('off',!layers[k]); applyLayers(); };
   });
+  document.getElementById('legend-toggle').onclick=()=>{ legendOpen=!legendOpen; syncLegendOpen(); };
+  syncLegendOpen();
+}
+function syncLegendOpen(){
+  document.getElementById('legend-layers').style.display=legendOpen?'':'none';
+  document.getElementById('legend-caret').textContent=legendOpen?'▴ layers':'▾ layers';
 }
 function renderLegend(){
   const counts={}; GRAPH.nodes.forEach(n=>counts[n.role]=(counts[n.role]||0)+1);
@@ -1590,13 +1612,15 @@ function alertAge(ts){
   if(s<86400) return Math.round(s/3600)+'h';
   return Math.round(s/86400)+'d';
 }
+let alertsExpanded=false;
+const ALERTS_COLLAPSED=6;
 function renderAlertsFeed(){
   const panel=document.getElementById('alerts');
   if(!allAlerts.length){ panel.style.display='none'; return; }
   panel.style.display='block';
   document.getElementById('alerts-head').innerHTML=
     `<span class="adot"></span>Alerts · ${allAlerts.length}`;
-  const show=allAlerts.slice(0,6);
+  const show=alertsExpanded?allAlerts:allAlerts.slice(0,ALERTS_COLLAPSED);
   const rows=show.map(a=>{
     const n=a.id!=null?nodeById.get(a.id):null;
     const who=n?(n.label||n.mac):(a.mac||'—');
@@ -1606,10 +1630,18 @@ function renderAlertsFeed(){
       `<span class="ad">${esc(who)}</span>`+
       `<span class="at">${alertAge(a.ts)}</span></div>`;
   }).join('');
-  const more=allAlerts.length>show.length?`<div class="amore">+${allAlerts.length-show.length} more</div>`:'';
-  document.getElementById('alerts-list').innerHTML=rows+more;
+  let toggle='';
+  if(allAlerts.length>ALERTS_COLLAPSED){
+    toggle=`<div class="amore" id="alerts-toggle">`+
+      (alertsExpanded?'▴ show less':`▾ +${allAlerts.length-ALERTS_COLLAPSED} more`)+`</div>`;
+  }
+  const list=document.getElementById('alerts-list');
+  list.classList.toggle('expanded', alertsExpanded);
+  list.innerHTML=rows+toggle;
   panel.querySelectorAll('.arow[data-id]').forEach(el=>
     el.onclick=()=>select(el.getAttribute('data-id')));
+  const tog=document.getElementById('alerts-toggle');
+  if(tog) tog.onclick=()=>{ alertsExpanded=!alertsExpanded; renderAlertsFeed(); };
 }
 
 // ---- control wiring ----
